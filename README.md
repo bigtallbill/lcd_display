@@ -23,6 +23,55 @@ def deps do
 end
 ```
 
+## Development with Nix
+
+This project includes a Nix flake for reproducible development environments. If you're using NixOS or have Nix installed, you can quickly set up a development environment with all necessary dependencies.
+
+### Using Nix Flakes
+
+To enter the development environment:
+
+```bash
+nix develop
+```
+
+This will provide you with:
+- Elixir 1.18 and Erlang 27
+- All development tools (mix, hex, rebar3)
+- Documentation tools
+- Code analysis tools (credo, dialyzer)
+- Hardware tools for embedded development (fwup, i2c-tools)
+
+### Building with Nix
+
+To build the project:
+
+```bash
+nix build
+```
+
+To run checks (formatting, compilation, tests):
+
+```bash
+nix flake check
+```
+
+### Using direnv (optional)
+
+If you have [direnv](https://direnv.net/) installed, the project includes a `.envrc` file that will automatically activate the Nix environment when you enter the project directory:
+
+```bash
+direnv allow
+```
+
+### Legacy Nix Support
+
+For users not using flakes, a `shell.nix` file is also provided:
+
+```bash
+nix-shell
+```
+
 ## Usage
 
 As an example, if you want to control a [Hitachi HD44780](https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller) type display through
