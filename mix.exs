@@ -35,7 +35,7 @@ defmodule LcdDisplay.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:circuits_gpio, "~> 0.4"},
+      {:circuits_gpio, "~> 2.1"},
       {:circuits_i2c, "~> 0.1"},
       {:circuits_spi, "~> 0.1"},
       {:mox, "~> 1.0.0", only: :test},
