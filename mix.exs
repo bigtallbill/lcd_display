@@ -36,8 +36,8 @@ defmodule LcdDisplay.MixProject do
   defp deps do
     [
       {:circuits_gpio, "~> 2.1"},
-      {:circuits_i2c, "~> 0.1"},
-      {:circuits_spi, "~> 0.1"},
+      {:circuits_i2c, "~> 2.1"},
+      {:circuits_spi, "~> 2.0"},
       {:mox, "~> 1.0.0", only: :test},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.14", only: :dev, runtime: false},
