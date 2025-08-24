@@ -27,3 +27,8 @@ lcd_display-*.tar
 /tmp
 
 .elixir_ls
+
+# Nix development directories
+.nix-mix/
+.nix-hex/
+.direnv/
