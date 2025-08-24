@@ -13,7 +13,9 @@ For the specification of the HD44780 LCD, please refer to the [HD44780 data shee
 
 ## Installation
 
-You can install `LcdDisplay` by adding `lcd_display` to your list of dependencies in `mix.exs`:
+### From Hex (Stable Release)
+
+You can install the stable version of `LcdDisplay` by adding `lcd_display` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -21,6 +23,41 @@ def deps do
     {:lcd_display, "~> 0.2.0"}
   ]
 end
+```
+
+### From Git (Latest with Circuits 2.x Support)
+
+For the latest version with upgraded Circuits libraries (circuits_gpio ~> 2.1, circuits_i2c ~> 2.1, circuits_spi ~> 2.0), use the Git dependency:
+
+```elixir
+def deps do
+  [
+    {:lcd_display, git: "https://github.com/bigtallbill/lcd_display.git"}
+  ]
+end
+```
+
+You can also specify a specific branch, tag, or commit:
+
+```elixir
+def deps do
+  [
+    # Specific branch
+    {:lcd_display, git: "https://github.com/bigtallbill/lcd_display.git", branch: "main"},
+    
+    # Specific tag (when available)
+    # {:lcd_display, git: "https://github.com/bigtallbill/lcd_display.git", tag: "v0.3.0"},
+    
+    # Specific commit
+    # {:lcd_display, git: "https://github.com/bigtallbill/lcd_display.git", ref: "abc123"},
+  ]
+end
+```
+
+After adding the dependency, run:
+
+```bash
+mix deps.get
 ```
 
 ## Development with Nix
