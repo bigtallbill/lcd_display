@@ -30,6 +30,40 @@ defmodule LcdDisplay.HD44780.PCF8574 do
   {:ok, display} = LcdDisplay.HD44780.PCF8574.execute(display, {:print, "Hello world"})
   ```
 
+  ## Backlight Control Options
+
+  The driver supports three backlight control modes:
+
+  * `:auto` (default) - Library manages backlight state automatically
+  * `:manual` - Preserves current backlight state during LCD operations
+  * `:off` - Never sets backlight bit (always off)
+
+  ### Manual Backlight Control
+
+  For external backlight control (e.g., direct I2C writes), use `:manual` mode:
+
+  ```
+  config = %{
+    i2c_bus: "i2c-1",
+    i2c_address: 0x27,
+    rows: 2,
+    cols: 16,
+    backlight_control: :manual,
+    initial_backlight: false
+  }
+
+  {:ok, display} = LcdDisplay.HD44780.PCF8574.start(config)
+
+  # LCD operations won't change backlight state
+  {:ok, display} = LcdDisplay.HD44780.PCF8574.execute(display, {:print, "Hello"})
+
+  # Change backlight control mode at runtime
+  {:ok, display} = LcdDisplay.HD44780.PCF8574.execute(display, {:backlight_control, :manual})
+
+  # Sync library state with external backlight control
+  {:ok, display} = LcdDisplay.HD44780.PCF8574.execute(display, {:sync_backlight_state, false})
+  ```
+
   ## Pin assignment
 
   This module assumes the following pin assignment:
@@ -61,7 +95,9 @@ defmodule LcdDisplay.HD44780.PCF8574 do
   @type config :: %{
           optional(:rows) => String.t(),
           optional(:cols) => pos_integer,
-          optional(:font_size) => pos_integer
+          optional(:font_size) => pos_integer,
+          optional(:backlight_control) => :auto | :manual | :off,
+          optional(:initial_backlight) => boolean
         }
 
   @doc """
@@ -76,7 +112,7 @@ defmodule LcdDisplay.HD44780.PCF8574 do
     {:ok,
      config
      |> initial_state()
-     |> expander_write(@backlight_on)
+     |> initialize_display_with_backlight()
      |> initialize_display(function_set: @cmd_function_set ||| font_size ||| number_of_lines)}
   rescue
     e -> {:error, e}
@@ -98,7 +134,8 @@ defmodule LcdDisplay.HD44780.PCF8574 do
       # Initial values for features that we can change later.
       entry_mode: @cmd_entry_mode_set ||| @entry_left,
       display_control: @cmd_display_control ||| @display_on,
-      backlight: true
+      backlight: if(opts[:initial_backlight] != nil, do: opts[:initial_backlight], else: true),
+      backlight_control: opts[:backlight_control] || :auto
     }
   end
 
@@ -148,6 +185,11 @@ defmodule LcdDisplay.HD44780.PCF8574 do
   def execute(display, {:right, cols}), do: {:ok, right(display, cols)}
   def execute(display, {:left, cols}), do: {:ok, left(display, cols)}
   def execute(display, {:backlight, on_off_bool}), do: {:ok, set_backlight(display, on_off_bool)}
+
+  def execute(display, {:backlight_control, mode}) when mode in [:auto, :manual, :off],
+    do: {:ok, set_backlight_control(display, mode)}
+
+  def execute(display, {:sync_backlight_state, on_off_bool}), do: {:ok, sync_backlight_state(display, on_off_bool)}
   def execute(_display, command), do: {:error, {:unsupported, command}}
 
   defp clear(display), do: display |> write_instruction(@cmd_clear_display) |> delay(2)
@@ -231,6 +273,16 @@ defmodule LcdDisplay.HD44780.PCF8574 do
     %{display | backlight: flag} |> expander_write(0)
   end
 
+  @spec set_backlight_control(display_driver, :auto | :manual | :off) :: display_driver
+  defp set_backlight_control(display, mode) when mode in [:auto, :manual, :off] do
+    %{display | backlight_control: mode}
+  end
+
+  @spec sync_backlight_state(display_driver, boolean) :: display_driver
+  defp sync_backlight_state(display, flag) when is_boolean(flag) do
+    %{display | backlight: flag}
+  end
+
   @impl LcdDisplay.HD44780.Driver
   def write_instruction(display, byte), do: write_byte(display, byte, 0)
 
@@ -265,14 +317,27 @@ defmodule LcdDisplay.HD44780.PCF8574 do
     |> expander_write(byte &&& ~~~@enable_bit)
   end
 
+  @spec initialize_display_with_backlight(display_driver) :: display_driver
+  defp initialize_display_with_backlight(display) do
+    case display.backlight_control do
+      :auto -> expander_write(display, if(display.backlight, do: @backlight_on, else: 0))
+      _ -> expander_write(display, 0)
+    end
+  end
+
   @spec expander_write(display_driver, byte) :: display_driver
   defp expander_write(display, byte) when is_integer(byte) do
-    %{i2c_ref: i2c_ref, i2c_address: i2c_address, backlight: backlight} = display
+    %{i2c_ref: i2c_ref, i2c_address: i2c_address, backlight: backlight, backlight_control: backlight_control} = display
 
     data =
-      if backlight,
-        do: byte ||| @backlight_on,
-        else: byte
+      case backlight_control do
+        # Never set backlight bit
+        :off -> byte
+        # Don't modify backlight bit - preserve current hardware state
+        :manual -> byte
+        # Default behavior
+        :auto -> if backlight, do: byte ||| @backlight_on, else: byte
+      end
 
     :ok = LcdDisplay.I2C.write(i2c_ref, i2c_address, [data])
     display

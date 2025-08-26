@@ -30,7 +30,8 @@ defmodule LcdDisplay.HD44780.PCF8574Test do
              cols: 16,
              entry_mode: 6,
              display_control: 12,
-             backlight: true
+             backlight: true,
+             backlight_control: :auto
            } = display
 
     assert is_reference(i2c_ref)
@@ -40,6 +41,12 @@ defmodule LcdDisplay.HD44780.PCF8574Test do
     opts = %{i2c_address: 0x3F, rows: 4, cols: 20}
     {:ok, display} = HD44780.PCF8574.start(opts)
     assert %{i2c_address: 0x3F, rows: 4, cols: 20} = display
+  end
+
+  test "start with backlight control options" do
+    opts = %{backlight_control: :manual, initial_backlight: false}
+    {:ok, display} = HD44780.PCF8574.start(opts)
+    assert %{backlight: false, backlight_control: :manual} = display
   end
 
   describe "commands" do
@@ -82,6 +89,46 @@ defmodule LcdDisplay.HD44780.PCF8574Test do
     test "change backlight", %{display: d} do
       assert {:ok, %{backlight: false}} = HD44780.PCF8574.execute(d, {:backlight, false})
       assert {:ok, %{backlight: true}} = HD44780.PCF8574.execute(d, {:backlight, true})
+    end
+
+    test "change backlight control mode", %{display: d} do
+      assert {:ok, %{backlight_control: :manual}} = HD44780.PCF8574.execute(d, {:backlight_control, :manual})
+      assert {:ok, %{backlight_control: :off}} = HD44780.PCF8574.execute(d, {:backlight_control, :off})
+      assert {:ok, %{backlight_control: :auto}} = HD44780.PCF8574.execute(d, {:backlight_control, :auto})
+    end
+
+    test "sync backlight state", %{display: d} do
+      assert {:ok, %{backlight: false}} = HD44780.PCF8574.execute(d, {:sync_backlight_state, false})
+      assert {:ok, %{backlight: true}} = HD44780.PCF8574.execute(d, {:sync_backlight_state, true})
+    end
+
+    test "manual backlight control preserves state during LCD operations", %{display: d} do
+      # Set to manual mode with backlight off
+      {:ok, d} = HD44780.PCF8574.execute(d, {:backlight_control, :manual})
+      {:ok, d} = HD44780.PCF8574.execute(d, {:sync_backlight_state, false})
+
+      # LCD operations should not change backlight state
+      {:ok, d} = HD44780.PCF8574.execute(d, :clear)
+      assert %{backlight: false} = d
+
+      {:ok, d} = HD44780.PCF8574.execute(d, {:print, "Test"})
+      assert %{backlight: false} = d
+
+      {:ok, d} = HD44780.PCF8574.execute(d, {:set_cursor, 1, 0})
+      assert %{backlight: false} = d
+    end
+
+    test "off mode never sets backlight", %{display: d} do
+      # Set to off mode
+      {:ok, d} = HD44780.PCF8574.execute(d, {:backlight_control, :off})
+      {:ok, d} = HD44780.PCF8574.execute(d, {:sync_backlight_state, true})
+
+      # LCD operations should not affect backlight
+      {:ok, d} = HD44780.PCF8574.execute(d, :clear)
+      {:ok, d} = HD44780.PCF8574.execute(d, {:print, "Test"})
+
+      # Internal state can be true, but hardware backlight should be off
+      assert %{backlight: true, backlight_control: :off} = d
     end
   end
 end
